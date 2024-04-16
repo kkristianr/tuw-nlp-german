@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from tuw_nlp.graph.ud_graph import UDGraph
 from tuw_nlp.text.pipeline import CachedStanzaPipeline, CustomStanzaPipeline
 
@@ -22,6 +24,9 @@ class TextToUD:
         for sen in self.nlp(text, ssplit=ssplit).sentences:
             tokens = [token.text for token in sen.tokens]
 
-            ud_graph = UDGraph(sen, text, tokens)
+            ud_graph = UDGraph(sen, sen.text, tokens)
 
             yield ud_graph
+
+    def get_params(self) -> Dict[str, Any]:
+        return {"lang": self.lang}
