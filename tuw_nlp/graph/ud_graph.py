@@ -1,15 +1,44 @@
 import networkx as nx
+from networkx.readwrite import json_graph
+from stanza.models.common.doc import Sentence
 
 from tuw_nlp.graph.graph import Graph, UnconnectedGraphError
 from tuw_nlp.graph.utils import preprocess_edge_alto
 
 
 class UDGraph(Graph):
+    @staticmethod
+    def from_json(data):
+        sen = Sentence(data["stanza_sen"])
+        text, tokens = data["text"], data["tokens"]
+        G = json_graph.adjacency_graph(data["graph"])
+        assert G.graph["type"] == "ud"
+        assert G.graph["text"] == text
+        assert G.graph["tokens"] == tokens
+        ud_graph = UDGraph(sen, text, tokens)
+        ud_graph.G = G
+        return ud_graph
+
     def __init__(self, sen, text=None, tokens=None):
 
         graph = self.convert_to_networkx(sen)
         super(UDGraph, self).__init__(graph=graph, text=text, tokens=tokens, type="ud")
         self.ud_graph = sen
+
+    def to_json(self):
+        data = {
+            "graph": json_graph.adjacency_data(self.G),
+            "text": self.text,
+            "tokens": self.tokens,
+            "stanza_sen": self.ud_graph.to_dict(),
+        }
+        return data
+
+    def __str__(self):
+        return f"UDGraph({self.str_nodes()})"
+
+    def __repr__(self):
+        return self.__str__()
 
     def str_nodes(self):
         return " ".join(
@@ -93,7 +122,7 @@ class UDGraph(Graph):
         for u, v, d in H.edges(data=True):
             d["color"] = d["color"].lower()
         for node, data in self.G.nodes(data=True):
-            word = data['name']
+            word = data["name"]
             if word in words:
                 word = f"{word}_"
             words.add(word)
@@ -102,6 +131,14 @@ class UDGraph(Graph):
             H.add_edge(node, leaf_node_id, color=data["upos"])
             nx.set_node_attributes(H, {node: {"name": ""}})
         return Graph.from_networkx(H)
+
+    def subgraph_from_tok_ids(self, ids):
+        nodes = {
+            node
+            for node, data in self.G.nodes(data=True)
+            if data.get("token_id") in ids
+        }
+        return self.subgraph(nodes)
 
     def convert_to_networkx(self, sen):
         """convert dependency-parsed stanza Sentence to nx.DiGraph"""
