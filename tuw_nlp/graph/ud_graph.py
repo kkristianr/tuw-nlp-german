@@ -10,6 +10,7 @@ class UDGraph(Graph):
     @staticmethod
     def from_json(data):
         sen = Sentence(data["stanza_sen"])
+        sen.text = data["stanza_text"]
         text, tokens = data["text"], data["tokens"]
         G = json_graph.adjacency_graph(data["graph"])
         assert G.graph["type"] == "ud"
@@ -23,14 +24,15 @@ class UDGraph(Graph):
 
         graph = self.convert_to_networkx(sen)
         super(UDGraph, self).__init__(graph=graph, text=text, tokens=tokens, type="ud")
-        self.ud_graph = sen
+        self.stanza_sen = sen
 
     def to_json(self):
         data = {
             "graph": json_graph.adjacency_data(self.G),
             "text": self.text,
             "tokens": self.tokens,
-            "stanza_sen": self.ud_graph.to_dict(),
+            "stanza_sen": self.stanza_sen.to_dict(),
+            "stanza_text": self.stanza_sen.text,
         }
         return data
 
@@ -46,7 +48,7 @@ class UDGraph(Graph):
         )
 
     def copy(self):
-        new_graph = UDGraph(self.ud_graph, text=self.text, tokens=self.tokens)
+        new_graph = UDGraph(self.stanza_sen, text=self.text, tokens=self.tokens)
         new_graph.G = self.G.copy()
         return new_graph
 
@@ -67,8 +69,10 @@ class UDGraph(Graph):
         H = self.G.subgraph(nodes)
         if not nx.is_weakly_connected(H):
             if handle_unconnected is None:
+                print(self.to_dot())
+                print(Graph.nx_graph_to_dot(H))
                 raise UnconnectedGraphError(
-                    f"subgraph induced by nodes {nodes} is not connected and handle_unconnected is not specified"
+                    f"subgraph induced by nodes {nodes} in {self} is not connected and handle_unconnected is not specified"
                 )
             elif handle_unconnected == "shortest_path":
                 new_nodes = set(
@@ -105,7 +109,7 @@ class UDGraph(Graph):
         # print("new tokens:", new_tokens)
 
         H.graph["tokens"] = new_tokens
-        new_graph = UDGraph(self.ud_graph, text=None, tokens=new_tokens)
+        new_graph = UDGraph(self.stanza_sen, text=None, tokens=new_tokens)
         # print("new graph tokens:", new_graph.tokens)
         new_graph.G = H
         # print(
@@ -132,17 +136,19 @@ class UDGraph(Graph):
             nx.set_node_attributes(H, {node: {"name": ""}})
         return Graph.from_networkx(H)
 
-    def subgraph_from_tok_ids(self, ids):
+    def subgraph_from_tok_ids(self, ids, handle_unconnected=None):
+        tok_ids = {self.tok_ids[i] for i in ids}
         nodes = {
             node
             for node, data in self.G.nodes(data=True)
-            if data.get("token_id") in ids
+            if data.get("token_id") in tok_ids
         }
-        return self.subgraph(nodes)
+        return self.subgraph(nodes, handle_unconnected=handle_unconnected)
 
     def convert_to_networkx(self, sen):
         """convert dependency-parsed stanza Sentence to nx.DiGraph"""
         G = nx.DiGraph()
+        self.tok_ids = []
         for word in sen.to_dict():
             if isinstance(word["id"], (list, tuple)):
                 # token representing an mwe, e.g. "vom" ~ "von dem"
@@ -150,6 +156,7 @@ class UDGraph(Graph):
             G.add_node(
                 word["id"], name=word["lemma"], token_id=word["id"], upos=word["upos"]
             )
+            self.tok_ids.append(word["id"])
             if word["deprel"] == "root":
                 G.add_node(word["head"], name="root", upos="ROOT")
             G.add_edge(word["head"], word["id"])
