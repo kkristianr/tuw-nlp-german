@@ -1,3 +1,5 @@
+import logging
+
 import networkx as nx
 from networkx.readwrite import json_graph
 from stanza.models.common.doc import Sentence
@@ -42,9 +44,16 @@ class UDGraph(Graph):
     def __repr__(self):
         return self.__str__()
 
+    def str_node(self, node, data):
+        node_str = f"{node}_{data['name']}"
+        if data.get("inferred") is True:
+            node_str += "*"
+        return node_str
+
     def str_nodes(self):
         return " ".join(
-            f"{i}_{data['name']}" for i, data in sorted(self.G.nodes(data=True))
+            f"{self.str_node(node, data)}"
+            for node, data in sorted(self.G.nodes(data=True))
         )
 
     def copy(self):
@@ -74,7 +83,8 @@ class UDGraph(Graph):
                 raise UnconnectedGraphError(
                     f"subgraph induced by nodes {nodes} in {self} is not connected and handle_unconnected is not specified"
                 )
-            elif handle_unconnected == "shortest_path":
+            elif handle_unconnected.startswith("shortest_path"):
+                inferred_nodes = set()
                 new_nodes = set(
                     nodes
                 )  # a copy of the original nodes parameter to expand
@@ -91,8 +101,14 @@ class UDGraph(Graph):
                     for node in path:
                         if node not in new_nodes:
                             new_nodes.add(node)
+                            if handle_unconnected.endswith("infer"):
+                                logging.debug(f"inferring {node=}")
+                                inferred_nodes.add(node)
 
-                return self.subgraph(new_nodes)
+                H = self.G.subgraph(new_nodes)
+                for node in inferred_nodes:
+                    H.nodes()[node]["inferred"] = True
+                # return self.subgraph(new_nodes)
 
             else:
                 raise ValueError(
@@ -136,32 +152,23 @@ class UDGraph(Graph):
             nx.set_node_attributes(H, {node: {"name": ""}})
         return Graph.from_networkx(H)
 
-    def subgraph_from_tok_ids(self, ids, handle_unconnected=None):
-        tok_ids = {self.tok_ids[i] for i in ids}
-        nodes = {
-            node
-            for node, data in self.G.nodes(data=True)
-            if data.get("token_id") in tok_ids
-        }
-        return self.subgraph(nodes, handle_unconnected=handle_unconnected)
-
     def convert_to_networkx(self, sen):
         """convert dependency-parsed stanza Sentence to nx.DiGraph"""
         G = nx.DiGraph()
-        self.tok_ids = []
-        for word in sen.to_dict():
+        self.tok_ids_to_nodes = {}
+        for i, word in enumerate(sen.to_dict()):
             if isinstance(word["id"], (list, tuple)):
                 # token representing an mwe, e.g. "vom" ~ "von dem"
                 continue
-            G.add_node(
-                word["id"], name=word["lemma"], token_id=word["id"], upos=word["upos"]
-            )
-            self.tok_ids.append(word["id"])
+            G.add_node(i, name=word["lemma"], token_id=word["id"], upos=word["upos"])
+            self.tok_ids_to_nodes[word["id"]] = i
             if word["deprel"] == "root":
-                G.add_node(word["head"], name="root", upos="ROOT")
-            G.add_edge(word["head"], word["id"])
-            G[word["head"]][word["id"]].update(
-                {"color": preprocess_edge_alto(word["deprel"])}
-            )
+                G.add_node(-1, name="root", upos="ROOT")
+                self.tok_ids_to_nodes[0] = -1
+
+        for i, word in enumerate(sen.to_dict()):
+            head_node = self.tok_ids_to_nodes[word["head"]]
+            G.add_edge(head_node, i)
+            G[head_node][i].update({"color": preprocess_edge_alto(word["deprel"])})
 
         return G
