@@ -160,7 +160,8 @@ class UDGraph(Graph):
             if isinstance(word["id"], (list, tuple)):
                 # token representing an mwe, e.g. "vom" ~ "von dem"
                 continue
-            G.add_node(i, name=word["lemma"], token_id=word["id"], upos=word["upos"])
+            name = word.get("lemma", word['text'])
+            G.add_node(i, name=name, token_id=word["id"], upos=word["upos"])
             self.tok_ids_to_nodes[word["id"]] = i
             if word["deprel"] == "root":
                 G.add_node(-1, name="root", upos="ROOT")
