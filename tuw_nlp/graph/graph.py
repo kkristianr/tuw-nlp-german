@@ -85,36 +85,17 @@ class Graph:
         if re.match("^[0-9]", s) or s in keywords:
             s = "X" + s
         return s
-
-    def prune_graphs(self):
-        """
-        If the graph is not connected, prune it to the largest connected component
-        """
-        g = [
-            c
-            for c in sorted(
-                nx.weakly_connected_components(self.G), key=len, reverse=True
-            )
-        ]
-        if len(g) > 1:
-            print(
-                "WARNING: graph has multiple connected components, taking the largest"
-            )
-            g_pn = self.G.subgraph(g[0].copy())
-        else:
-            g_pn = self.G.copy()
-
-        self.G = g_pn
-
-    def to_dot(self, marked_nodes=set(), edge_color=None):
-        show_graph = self.G.copy()
+    
+    @staticmethod
+    def nx_graph_to_dot(G, marked_nodes=set(), edge_color=None):
+        show_graph = G.copy()
         show_graph.remove_nodes_from(list(nx.isolates(show_graph)))
         lines = ["digraph finite_state_machine {", "\tdpi=70;"]
         node_lines = []
         for node, n_data in show_graph.nodes(data=True):
             d_node = node
             if "name" in n_data:
-                printname = self.d_clean(str(n_data["name"]))
+                printname = Graph.d_clean(str(n_data["name"]))
             else:
                 printname = d_node
             if (
@@ -179,3 +160,27 @@ class Graph:
         lines += sorted(edge_lines)
         lines.append("}")
         return "\n".join(lines)
+
+    def prune_graphs(self):
+        """
+        If the graph is not connected, prune it to the largest connected component
+        """
+        g = [
+            c
+            for c in sorted(
+                nx.weakly_connected_components(self.G), key=len, reverse=True
+            )
+        ]
+        if len(g) > 1:
+            print(
+                "WARNING: graph has multiple connected components, taking the largest"
+            )
+            g_pn = self.G.subgraph(g[0].copy())
+        else:
+            g_pn = self.G.copy()
+
+        self.G = g_pn
+
+    def to_dot(self, marked_nodes=set(), edge_color=None):
+        return Graph.nx_graph_to_dot(self.G, marked_nodes=marked_nodes, edge_color=edge_color)
+    

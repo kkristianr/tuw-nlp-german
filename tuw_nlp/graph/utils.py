@@ -106,17 +106,20 @@ class GraphFormulaPatternMatcher:
 
     def __init__(self, patterns, converter, case_sensitive=False):
         self.case_sensitive = case_sensitive
-        self.reg_patterns = {
-            re.compile(r"^(\d+)\((.*),(.*)\)"): self.max_distance,
-            re.compile(r"^path\((.*),(.*)\)"): self.path_between,
-            re.compile(r"^undirected\((.*),(.*)\)"): self.undirected,
-        }
-        self.patts = []
+        if converter is None:
+            self.patts = patterns
+        else:
+            self.reg_patterns = {
+                re.compile(r"^(\d+)\((.*),(.*)\)"): self.max_distance,
+                re.compile(r"^path\((.*),(.*)\)"): self.path_between,
+                re.compile(r"^undirected\((.*),(.*)\)"): self.undirected,
+            }
+            self.patts = []
 
-        for patts, negs, key in patterns:
-            pos_patts = self.patt_list(patts, converter)
-            neg_graphs = self.patt_list(negs, converter)
-            self.patts.append((pos_patts, neg_graphs, key))
+            for patts, negs, key in patterns:
+                pos_patts = self.patt_list(patts, converter)
+                neg_graphs = self.patt_list(negs, converter)
+                self.patts.append((pos_patts, neg_graphs, key))
 
     def patt_list(self, patts, converter):
         patt_list = []
@@ -327,7 +330,9 @@ def pn_to_graph(raw_dl, edge_attr="color"):
     return G, root_id
 
 
-def graph_to_bolinas(graph, name_attr="name", return_root=False, ext_node=None, keep_node_labels=True):
+def graph_to_bolinas(
+    graph, name_attr="name", return_root=False, ext_node=None, keep_node_labels=True
+):
     nodes = {}
     pn_edges = []
 
@@ -351,7 +356,7 @@ def graph_to_bolinas(graph, name_attr="name", return_root=False, ext_node=None, 
     G = pn.Graph(pn_edges)
     bolinas_str = pn.encode(G, top=nodes[top_node], indent=0).replace("\n", " ")
     if not keep_node_labels:
-        bolinas_str = re.sub(r'n[0-9]*\.', ".", bolinas_str)
+        bolinas_str = re.sub(r"n[0-9]*\.", ".", bolinas_str)
     if return_root:
         return bolinas_str, top_node
     else:
