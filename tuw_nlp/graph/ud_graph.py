@@ -22,9 +22,12 @@ class UDGraph(Graph):
         ud_graph.G = G
         return ud_graph
 
-    def __init__(self, sen, text=None, tokens=None):
+    def __init__(self, sen, text=None, tokens=None, graph=None):
+        """Initialize UDGraph instance.
+        First argument must be a stanza sentence and by default it is used to infer the graph"""
 
-        graph = self.convert_to_networkx(sen)
+        if graph is None:
+            graph = self.convert_to_networkx(sen)
         super(UDGraph, self).__init__(graph=graph, text=text, tokens=tokens, type="ud")
         self.stanza_sen = sen
 
@@ -140,8 +143,7 @@ class UDGraph(Graph):
         ]
         H.graph["tokens"] = new_tokens
 
-        new_graph = UDGraph(self.stanza_sen, text=None, tokens=new_tokens)
-        new_graph.G = H
+        new_graph = UDGraph(self.stanza_sen, text=None, tokens=new_tokens, graph=H)
         return new_graph
 
     def pos_edge_graph(self, vocab):
