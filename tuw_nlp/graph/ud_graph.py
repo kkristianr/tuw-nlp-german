@@ -1,5 +1,6 @@
 import networkx as nx
 from networkx.readwrite import json_graph
+from networkx.utils import graphs_equal
 from stanza.models.common.doc import Sentence
 
 from tuw_nlp.graph.graph import Graph, UnconnectedGraphError
@@ -43,6 +44,17 @@ class UDGraph(Graph):
 
     def __str__(self):
         return f"UDGraph({self.str_nodes()})"
+
+    def __hash__(self):
+        return hash((self.text, tuple(self.tokens), self.G))
+
+    def __eq__(self, other):
+        return (
+            self.text == other.text
+            and self.tokens == other.tokens
+            and graphs_equal(self.G, other.G)
+            and self.stanza_sen.to_dict() == other.stanza_sen.to_dict()
+        )
 
     def __repr__(self):
         return self.__str__()
