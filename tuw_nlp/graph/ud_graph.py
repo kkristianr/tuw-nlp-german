@@ -190,6 +190,9 @@ class UDGraph(Graph):
                 self.tok_ids_to_nodes[0] = -1
 
         for i, word in enumerate(sen.to_dict()):
+            if not isinstance(word['id'], int):
+                # multi-word token
+                continue
             head_node = self.tok_ids_to_nodes[word["head"]]
             G.add_edge(head_node, i)
             G[head_node][i].update({"color": preprocess_edge_alto(word["deprel"])})
