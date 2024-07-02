@@ -67,14 +67,17 @@ class UDGraph(Graph):
 
     def str_nodes(self):
         return " ".join(
-            f"{self.str_node(node, data)}"
-            for node, data in sorted(self.G.nodes(data=True))
-        )
+            f"{self.str_node(node, self.G.nodes[node])}"
+            for node in self.lextop)
 
     def copy(self):
         new_graph = UDGraph(self.stanza_sen, text=self.text, tokens=self.tokens)
         new_graph.G = self.G.copy()
         return new_graph
+
+    @property
+    def root(self):
+        return next(nx.topological_sort(self.G))
 
     def remove_graph(self, other):
         g_to_remove = other.G.copy()
@@ -128,6 +131,13 @@ class UDGraph(Graph):
             raise ValueError(
                 f"unknown value of handle_unconnected: {handle_unconnected}"
             )
+
+    @property
+    def inferred_nodes(self):
+        return [node for node, data in self.G.nodes(data=True) if data.get('inferred')]
+
+    def index_inferred_nodes(self):
+        return self.index_nodes(self.inferred_nodes)
 
     def subgraph(self, nodes, handle_unconnected=None):
         new_nodes, inferred_nodes = self._subgraph_infer_new_nodes(

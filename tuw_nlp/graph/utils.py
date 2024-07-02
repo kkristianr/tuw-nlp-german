@@ -193,11 +193,15 @@ class GraphFormulaPatternMatcher:
         matcher = GraphFormulaPatternMatcher.get_matcher(
             graph, pattern, self.case_sensitive
         )
+        
+        logging.debug(f"matching this: {pattern}")
+        logging.debug(f"matching this: {pattern.graph}")
 
         monomorphic_subgraphs = list(matcher.subgraph_monomorphisms_iter())
         if not len(monomorphic_subgraphs) == 0:
             for sub in monomorphic_subgraphs:
                 mapping = sub
+                logging.debug(f'{sub=}')
                 subgraph = graph.subgraph(mapping.keys()).copy()
                 # copying is essential, otherwise mapping gets overwritten if a node occurs in multiple matching subgraphs
                 nx.set_node_attributes(subgraph, mapping, name="mapping")
