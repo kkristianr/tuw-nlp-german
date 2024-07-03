@@ -30,3 +30,9 @@ class TextToUD:
 
     def get_params(self) -> Dict[str, Any]:
         return {"lang": self.lang}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.nlp.save_cache_if_changed()

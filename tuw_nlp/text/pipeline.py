@@ -74,8 +74,11 @@ class CachedStanzaPipeline:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
+    def save_cache_if_changed(self):
         if self.changed:
             logger.info(f"saving NLP cache to {self.cache_path}...")
             save_parsed(self.parsed, self.cache_path)
             logger.info("done!")
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.save_cache_if_changed()
