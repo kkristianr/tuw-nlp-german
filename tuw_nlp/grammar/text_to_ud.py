@@ -5,19 +5,23 @@ from tuw_nlp.text.pipeline import CachedStanzaPipeline, CustomStanzaPipeline
 
 
 class TextToUD:
-    def __init__(self, lang, nlp_cache, cache_dir=None):
+    def __init__(self, lang, nlp_cache, cache_dir=None, pretokenized=False):
         if lang == "de":
-            nlp = CustomStanzaPipeline(processors="tokenize,mwt,pos,lemma,depparse")
+            nlp = CustomStanzaPipeline(
+                processors="tokenize,mwt,pos,lemma,depparse", pretokenized=pretokenized
+            )
         elif lang == "en":
             nlp = CustomStanzaPipeline(
-                "en", processors="tokenize,mwt,pos,lemma,depparse"
+                "en",
+                processors="tokenize,mwt,pos,lemma,depparse",
+                pretokenized=pretokenized,
             )
         elif lang == "en_bio":
-            nlp = CustomStanzaPipeline("en", package="craft")
+            nlp = CustomStanzaPipeline("en", package="craft", pretokenized=pretokenized)
         assert lang, "TextTo4lang does not have lang set"
 
         self.lang = lang
-
+        self.pretokenized = pretokenized
         self.nlp = CachedStanzaPipeline(nlp, nlp_cache)
 
     def __call__(self, text, ssplit=True):
@@ -29,7 +33,7 @@ class TextToUD:
             yield ud_graph
 
     def get_params(self) -> Dict[str, Any]:
-        return {"lang": self.lang}
+        return {"lang": self.lang, "pretokenized": self.pretokenized}
 
     def __enter__(self):
         return self
