@@ -53,14 +53,17 @@ def normalize_whitespace(text):
     return " ".join([s for s in text.split() if s])
 
 
+def tuple_if_list(item):
+    if isinstance(item, list):
+        return tuple(item)
+    return item
+
+
 def load_parsed(fn):
     with open(fn) as f:
         parsed = json.load(f)
         return {
-            tuple(item["text"])
-            if isinstance(item["text"], list)
-            else item["text"]: StanzaDocument(item["doc"])
-            for item in parsed
+            tuple_if_list(item["text"]): StanzaDocument(item["doc"]) for item in parsed
         }
 
 

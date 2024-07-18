@@ -1,7 +1,9 @@
 import logging
 import re
+import traceback
 from copy import deepcopy
 from itertools import chain, product
+from functools import partial
 
 import networkx as nx
 import penman as pn
@@ -48,35 +50,24 @@ class GraphFormulaPatternMatcher:
     """
 
     @staticmethod
-    def node_matcher_case_insensitive(n1, n2):
-        return GraphFormulaPatternMatcher.node_matcher(n1, n2, re.IGNORECASE)
+    def node_matcher(n1, n2, flags=0, attrs=None):
+        logger.debug(f"matchig these: {n1}, {n2}, {attrs=}")
+        attrs = ("name",) if attrs is None else attrs
+        for attr in attrs:
+            if not GraphFormulaPatternMatcher._node_matcher(n1, n2, flags, attr):
+                return False
+        return True
 
     @staticmethod
-    def node_matcher_case_sensitive(n1, n2):
-        return GraphFormulaPatternMatcher.node_matcher(n1, n2, 0)
-
-    @staticmethod
-    def node_matcher(n1, n2, flags):
-        logger.debug(f"matchig these: {n1}, {n2}")
-        if n1["name"] is None or n2["name"] is None:
+    def _node_matcher(n1, n2, flags, attr):
+        if n1[attr] is None or n2[attr] is None:
             return True
 
         return (
             True
-            if (
-                re.match(rf"\b({n2['name']})\b", n1["name"], flags)
-                or n2["name"] == n1["name"]
-            )
+            if (n2[attr] == n1[attr] or re.match(rf"\b({n2[attr]})\b", n1[attr], flags))
             else False
         )
-
-    @staticmethod
-    def edge_matcher_case_insensitive(n1, n2):
-        return GraphFormulaPatternMatcher.edge_matcher(n1, n2, re.IGNORECASE)
-
-    @staticmethod
-    def edge_matcher_case_sensitive(n1, n2):
-        return GraphFormulaPatternMatcher.edge_matcher(n1, n2, 0)
 
     @staticmethod
     def edge_matcher(e1, e2, flags):
@@ -88,21 +79,16 @@ class GraphFormulaPatternMatcher:
         )
 
     @staticmethod
-    def get_matcher(graph, neg_graph, case_sensitive):
-        if case_sensitive:
-            return DiGraphMatcher(
-                graph,
-                neg_graph,
-                node_match=GraphFormulaPatternMatcher.node_matcher_case_sensitive,
-                edge_match=GraphFormulaPatternMatcher.edge_matcher_case_sensitive,
-            )
-        else:
-            return DiGraphMatcher(
-                graph,
-                neg_graph,
-                node_match=GraphFormulaPatternMatcher.node_matcher_case_insensitive,
-                edge_match=GraphFormulaPatternMatcher.edge_matcher_case_insensitive,
-            )
+    def get_matcher(graph, neg_graph, case_sensitive, attrs=None):
+        flags = re.IGNORECASE if case_sensitive else 0
+        node_matcher = partial(
+            GraphFormulaPatternMatcher.node_matcher, flags=flags, attrs=attrs
+        )
+        edge_matcher = partial(GraphFormulaPatternMatcher.edge_matcher, flags=flags)
+
+        return DiGraphMatcher(
+            graph, neg_graph, node_match=node_matcher, edge_match=edge_matcher
+        )
 
     def __init__(self, patterns, converter, case_sensitive=False):
         self.case_sensitive = case_sensitive
@@ -120,6 +106,8 @@ class GraphFormulaPatternMatcher:
                 pos_patts = self.patt_list(patts, converter)
                 neg_graphs = self.patt_list(negs, converter)
                 self.patts.append((pos_patts, neg_graphs, key))
+
+        self.pattern_errors = set()
 
     def patt_list(self, patts, converter):
         patt_list = []
@@ -189,11 +177,11 @@ class GraphFormulaPatternMatcher:
         undirected_graph = graph.to_undirected().to_directed()
         return self.path_between(undirected_graph, nodes, subgraphs)
 
-    def digraph_matcher(self, graph, pattern, subgraphs):
+    def digraph_matcher(self, graph, pattern, subgraphs, attrs=None):
         matcher = GraphFormulaPatternMatcher.get_matcher(
-            graph, pattern, self.case_sensitive
+            graph, pattern, self.case_sensitive, attrs=attrs
         )
-        
+
         logging.debug(f"matching this: {pattern}")
         logging.debug(f"matching this: {pattern.graph}")
 
@@ -201,7 +189,7 @@ class GraphFormulaPatternMatcher:
         if not len(monomorphic_subgraphs) == 0:
             for sub in monomorphic_subgraphs:
                 mapping = sub
-                logging.debug(f'{sub=}')
+                logging.debug(f"{sub=}")
                 subgraph = graph.subgraph(mapping.keys()).copy()
                 # copying is essential, otherwise mapping gets overwritten if a node occurs in multiple matching subgraphs
                 nx.set_node_attributes(subgraph, mapping, name="mapping")
@@ -222,29 +210,36 @@ class GraphFormulaPatternMatcher:
                     return True
         return False
 
-    def match(self, graph, return_subgraphs=False):
+    def match(self, graph, return_subgraphs=False, attrs=None):
         for i, (patt, negs, key) in enumerate(self.patts):
             logger.debug(f"matching this: {self.patts[i]}")
-            neg_match = self._neg_match(graph, negs)
+            try:
+                neg_match = self._neg_match(graph, negs)
 
-            if not neg_match:
-                subgraphs = []
-                pos_match = True
-                for p in patt:
-                    if isinstance(p, tuple):
-                        if not p[0](graph, p[1], subgraphs):
-                            pos_match = False
-                            break
-                    else:
-                        if not self.digraph_matcher(graph, p, subgraphs):
-                            pos_match = False
-                            break
+                if not neg_match:
+                    subgraphs = []
+                    pos_match = True
+                    for p in patt:
+                        if isinstance(p, tuple):
+                            if not p[0](graph, p[1], subgraphs):
+                                pos_match = False
+                                break
+                        else:
+                            if not self.digraph_matcher(graph, p, subgraphs, attrs):
+                                pos_match = False
+                                break
 
-                if pos_match:
-                    if return_subgraphs:
-                        yield key, i, subgraphs
-                    else:
-                        yield key, i
+                    if pos_match:
+                        if return_subgraphs:
+                            yield key, i, subgraphs
+                        else:
+                            yield key, i
+            except:
+                if i not in self.pattern_errors:
+                    logging.error(f"error matching {self.patts[i]=}")
+                    logging.error(f"\n{traceback.format_exc()}")
+                    logging.error("suppressing future errors caused by this pattern")
+                    self.pattern_errors.add(i)
 
 
 def gen_subgraphs(M, no_edges):

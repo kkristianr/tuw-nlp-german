@@ -19,8 +19,7 @@ class UDGraph(Graph):
         assert (
             G.graph["tokens"] == tokens
         ), f'tokens mismatch:\n{G.graph["tokens"]=}\n{tokens=}'
-        ud_graph = UDGraph(sen, text, tokens)
-        ud_graph.G = G
+        ud_graph = UDGraph(sen, text, tokens, G)
         return ud_graph
 
     def __init__(self, sen, text=None, tokens=None, graph=None):
