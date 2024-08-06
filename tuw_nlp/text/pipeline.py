@@ -11,6 +11,7 @@ class CustomStanzaPipeline:
     def __init__(
         self, lang="de", processors=None, package="default", pretokenized=False
     ):
+        self.pretokenized = pretokenized
         if processors is None:
             processors = {}
         self.lang = lang
@@ -25,8 +26,7 @@ class CustomStanzaPipeline:
             self.tokenizer = stanza.Pipeline(
                 lang=self.lang,
                 processors="tokenize",
-                package=package,
-                tokenize_pretokenized=pretokenized,
+                package=package
             )
 
         self.additional = stanza.Pipeline(
@@ -34,14 +34,18 @@ class CustomStanzaPipeline:
             processors=processors,
             tokenize_no_ssplit=True,
             package=package,
+            tokenize_pretokenized=pretokenized
         )
 
     def ssplit(self, text):
         return [sen.text for sen in self.tokenizer(text).sentences]
 
     def process(self, text):
-        sens = self.ssplit(text)
-        return self.additional("\n\n".join(sens))
+        if self.pretokenized:
+            return self.additional(text)
+        else:
+            sens = self.ssplit(text)
+            return self.additional("\n\n".join(sens))
 
     def __call__(self, text):
         return self.process(text)
