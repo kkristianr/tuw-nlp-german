@@ -182,8 +182,8 @@ class GraphFormulaPatternMatcher:
             graph, pattern, self.case_sensitive, attrs=attrs
         )
 
-        logging.debug(f"matching this: {pattern}")
-        logging.debug(f"matching this: {pattern.graph}")
+        # logging.debug(f"matching this: {pattern}")
+        # logging.debug(f"matching this: {pattern.graph}")
 
         monomorphic_subgraphs = list(matcher.subgraph_monomorphisms_iter())
         if not len(monomorphic_subgraphs) == 0:
@@ -212,7 +212,10 @@ class GraphFormulaPatternMatcher:
 
     def match(self, graph, return_subgraphs=False, attrs=None):
         for i, (patt, negs, key) in enumerate(self.patts):
-            logger.debug(f"matching this: {self.patts[i]}")
+            logging.debug(
+                "matching these:"
+                + "\n".join(graph_to_pn(G, name_attr="name") for G in patt)
+            )
             try:
                 neg_match = self._neg_match(graph, negs)
 
@@ -231,6 +234,12 @@ class GraphFormulaPatternMatcher:
 
                     if pos_match:
                         if return_subgraphs:
+                            logging.debug(
+                                "MATCH! Subgraphs:\n"
+                                + "\n".join(
+                                    graph_to_pn(G, name_attr="name") for G in subgraphs
+                                )
+                            )
                             yield key, i, subgraphs
                         else:
                             yield key, i

@@ -27,7 +27,6 @@ class TextToUD:
     def __call__(self, text, ssplit=True):
         for sen in self.nlp(text, ssplit=ssplit).sentences:
             tokens = [token.text for token in sen.tokens]
-
             ud_graph = UDGraph(sen, sen.text, tokens)
 
             yield ud_graph
@@ -40,3 +39,12 @@ class TextToUD:
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.nlp.save_cache_if_changed()
+
+
+if __name__ == "__main__":
+    # for testing
+
+    toks = ("People", "who", "'ve", "been", "giving", "them", "money")
+    with TextToUD(lang="en", nlp_cache="test_cache", pretokenized=True) as t_t_ud:
+        for graph in t_t_ud(toks):
+            print(graph)

@@ -1,3 +1,4 @@
+from anyascii import anyascii
 import networkx as nx
 from networkx.readwrite import json_graph
 from networkx.utils import graphs_equal
@@ -45,7 +46,13 @@ class UDGraph(Graph):
         return f"UDGraph({self.str_nodes()})"
 
     def __hash__(self):
-        return hash((self.text, tuple(self.tokens), self.G))
+        return int(
+            nx.weisfeiler_lehman_graph_hash(
+                self.G, node_attr="asciiname", edge_attr="color"
+            ),
+            16,
+        )
+        # return hash((self.text, tuple(self.tokens), self.G))
 
     def __eq__(self, other):
         return (
@@ -66,8 +73,8 @@ class UDGraph(Graph):
 
     def str_nodes(self):
         return " ".join(
-            f"{self.str_node(node, self.G.nodes[node])}"
-            for node in self.lextop)
+            f"{self.str_node(node, self.G.nodes[node])}" for node in self.lextop
+        )
 
     def copy(self):
         new_graph = UDGraph(self.stanza_sen, text=self.text, tokens=self.tokens)
@@ -133,7 +140,7 @@ class UDGraph(Graph):
 
     @property
     def inferred_nodes(self):
-        return [node for node, data in self.G.nodes(data=True) if data.get('inferred')]
+        return [node for node, data in self.G.nodes(data=True) if data.get("inferred")]
 
     def index_inferred_nodes(self):
         return self.index_nodes(self.inferred_nodes)
@@ -192,14 +199,14 @@ class UDGraph(Graph):
                 # token representing an mwe, e.g. "vom" ~ "von dem"
                 continue
             name = word.get("lemma", word["text"])
-            G.add_node(i, name=name, token_id=word["id"], upos=word["upos"])
+            G.add_node(i, name=name, token_id=word["id"], upos=word["upos"], asciiname=anyascii(name))
             self.tok_ids_to_nodes[word["id"]] = i
             if word["deprel"] == "root":
                 G.add_node(-1, name="root", upos="ROOT")
                 self.tok_ids_to_nodes[0] = -1
 
         for i, word in enumerate(sen.to_dict()):
-            if not isinstance(word['id'], int):
+            if not isinstance(word["id"], int):
                 # multi-word token
                 continue
             head_node = self.tok_ids_to_nodes[word["head"]]
