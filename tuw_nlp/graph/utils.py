@@ -281,12 +281,14 @@ def gen_subgraphs(M, no_edges):
                 yield new_graph
 
 
-def pn_to_graph(raw_dl, edge_attr="color"):
+def pn_to_graph(raw_dl, edge_attr="color", node_attr="name"):
     """Convert penman to networkx format
     raw_dl: raw string of penman format
     example: (k_4<root> / like :2 (k_6 / eat :2 (k_7 / sausage)) :1 (k_3 / dog :2-of (u_12 / HAS :1 (k_1 / Adam))))
     edges marked with k_* are mapped to UD nodes, u_* are unknown in UD
     """
+
+    node_attrs = node_attr.split("|")
 
     g = pn.decode(raw_dl)
     G = nx.DiGraph()
@@ -295,6 +297,10 @@ def pn_to_graph(raw_dl, edge_attr="color"):
 
     for i, trip in enumerate(g.instances()):
         node_id, name = trip[0], trip[2]
+
+        attrs = name.split("|")
+        assert len(attrs) == len(node_attrs)
+        node_attr_dict = dict(zip(node_attrs, attrs))
 
         node_to_id[node_id] = i
 
@@ -309,11 +315,13 @@ def pn_to_graph(raw_dl, edge_attr="color"):
             raise ValueError(f"{ud_id} is not a number")
 
         if indicator == "k":
-            G.add_node(i, name=name, token_id=ud_id)
+            node_attr_dict["token_id"] = ud_id
         elif indicator == "u":
-            G.add_node(i, name=name, token_id=None)
+            node_attr_dict["token_id"] = None
         else:
             raise ValueError("Unknown indicator")
+
+        G.add_node(i, **node_attr_dict)
 
     for trip in g.edges():
         edge = trip[1].split(":")[1]
@@ -375,10 +383,12 @@ def graph_to_pn(graph, name_attr="name"):
     nodes = {}
     pn_edges, pn_nodes = [], []
 
+    name_attrs = name_attr.split("|")
+
     for u, v, e in graph.edges(data=True):
         for node in u, v:
             if node not in nodes:
-                name = graph.nodes[node][name_attr]
+                name = "|".join(graph.nodes[node][attr] for attr in name_attrs)
                 pn_id = f"u_{node}"
                 nodes[node] = (pn_id, name)
                 pn_nodes.append((pn_id, ":instance", name))
@@ -387,7 +397,7 @@ def graph_to_pn(graph, name_attr="name"):
 
     for node in graph.nodes():
         if node not in nodes:
-            name = graph.nodes[node][name_attr]
+            name = "|".join(graph.nodes[node][attr] for attr in name_attrs)
             pn_id = f"u_{node}"
             nodes[node] = (pn_id, name)
             pn_nodes.append((pn_id, ":instance", name))

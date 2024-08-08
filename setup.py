@@ -38,7 +38,7 @@ setup(
         "dict-recursive-update",
         "networkx",
         "penman",
-        "stanza==1.3.0",
+        "stanza>=1.3.0",
         "nltk",
         "graphviz",
         "conceptnet-lite",

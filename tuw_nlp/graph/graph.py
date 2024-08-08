@@ -59,8 +59,8 @@ class Graph:
         return Graph(G, text, tokens, type)
 
     @staticmethod
-    def from_penman(pn_graph):
-        G, _ = pn_to_graph(pn_graph)
+    def from_penman(pn_graph, node_attr="name"):
+        G, _ = pn_to_graph(pn_graph, node_attr=node_attr)
 
         return Graph(G)
 
@@ -194,7 +194,11 @@ class Graph:
 
     @property
     def lextop(self):
-        return list(nx.lexicographical_topological_sort(self.G, key=lambda n: self.G.nodes[n]['name']))
+        return list(
+            nx.lexicographical_topological_sort(
+                self.G, key=lambda n: self.G.nodes[n]["name"]
+            )
+        )
 
     def index_nodes(self, nodes):
         return [self.lextop.index(node) for node in nodes]
