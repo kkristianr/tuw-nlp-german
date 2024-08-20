@@ -2,6 +2,7 @@ import re
 
 import networkx as nx
 from networkx.readwrite import json_graph
+from networkx.utils import graphs_equal
 
 from tuw_nlp.graph.utils import graph_to_bolinas, graph_to_pn, pn_to_graph
 
@@ -28,6 +29,21 @@ class Graph:
         self.G.graph["tokens"] = self.tokens
         self.G.graph["text"] = self.text
         self.G.graph["type"] = self.type
+
+    def __eq__(self, other):
+        return (
+            self.text == other.text
+            and self.tokens == other.tokens
+            and graphs_equal(self.G, other.G)
+        )
+
+    def __hash__(self):
+        return int(
+            nx.weisfeiler_lehman_graph_hash(
+                self.G, node_attr="asciiname", edge_attr="color"
+            ),
+            16,
+        )
 
     def __dict__(self):
         return self.to_json()

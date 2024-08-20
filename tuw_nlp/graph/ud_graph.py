@@ -1,7 +1,6 @@
 from anyascii import anyascii
 import networkx as nx
 from networkx.readwrite import json_graph
-from networkx.utils import graphs_equal
 from stanza.models.common.doc import Sentence
 
 from tuw_nlp.graph.graph import Graph, UnconnectedGraphError
@@ -44,23 +43,6 @@ class UDGraph(Graph):
 
     def __str__(self):
         return f"UDGraph({self.str_nodes()})"
-
-    def __hash__(self):
-        return int(
-            nx.weisfeiler_lehman_graph_hash(
-                self.G, node_attr="asciiname", edge_attr="color"
-            ),
-            16,
-        )
-        # return hash((self.text, tuple(self.tokens), self.G))
-
-    def __eq__(self, other):
-        return (
-            self.text == other.text
-            and self.tokens == other.tokens
-            and graphs_equal(self.G, other.G)
-            and self.stanza_sen.to_dict() == other.stanza_sen.to_dict()
-        )
 
     def __repr__(self):
         return self.__str__()
@@ -199,7 +181,13 @@ class UDGraph(Graph):
                 # token representing an mwe, e.g. "vom" ~ "von dem"
                 continue
             name = word.get("lemma", word["text"])
-            G.add_node(i, name=name, token_id=word["id"], upos=word["upos"], asciiname=anyascii(name))
+            G.add_node(
+                i,
+                name=name,
+                token_id=word["id"],
+                upos=word["upos"],
+                asciiname=anyascii(name),
+            )
             self.tok_ids_to_nodes[word["id"]] = i
             if word["deprel"] == "root":
                 G.add_node(-1, name="root", upos="ROOT")
