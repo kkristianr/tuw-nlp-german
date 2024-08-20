@@ -7,6 +7,7 @@ from functools import partial
 
 import networkx as nx
 import penman as pn
+from anyascii import anyascii
 from networkx.algorithms.isomorphism import DiGraphMatcher
 
 from tuw_nlp import logger
@@ -287,6 +288,8 @@ def pn_to_graph(raw_dl, edge_attr="color", node_attr="name"):
     example: (k_4<root> / like :2 (k_6 / eat :2 (k_7 / sausage)) :1 (k_3 / dog :2-of (u_12 / HAS :1 (k_1 / Adam))))
     edges marked with k_* are mapped to UD nodes, u_* are unknown in UD
     """
+    def postproc_name(name):
+        return name.replace("_PER_", "/")
 
     node_attrs = node_attr.split("|")
 
@@ -298,7 +301,7 @@ def pn_to_graph(raw_dl, edge_attr="color", node_attr="name"):
     for i, trip in enumerate(g.instances()):
         node_id, name = trip[0], trip[2]
 
-        attrs = name.split("|")
+        attrs = [postproc_name(attr) for attr in name.split("|")]
         assert len(attrs) == len(node_attrs)
         node_attr_dict = dict(zip(node_attrs, attrs))
 
@@ -320,6 +323,9 @@ def pn_to_graph(raw_dl, edge_attr="color", node_attr="name"):
             node_attr_dict["token_id"] = None
         else:
             raise ValueError("Unknown indicator")
+
+        if "name" in node_attr_dict:
+            node_attr_dict["asciiname"] = anyascii(node_attr_dict["name"])
 
         G.add_node(i, **node_attr_dict)
 
@@ -380,6 +386,9 @@ def graph_to_bolinas(
 
 
 def graph_to_pn(graph, name_attr="name"):
+    def preproc_name(name):
+        return name.replace("/", "_PER_")
+
     nodes = {}
     pn_edges, pn_nodes = [], []
 
@@ -388,7 +397,9 @@ def graph_to_pn(graph, name_attr="name"):
     for u, v, e in graph.edges(data=True):
         for node in u, v:
             if node not in nodes:
-                name = "|".join(graph.nodes[node][attr] for attr in name_attrs)
+                name = preproc_name(
+                    "|".join(graph.nodes[node][attr] for attr in name_attrs)
+                )
                 pn_id = f"u_{node}"
                 nodes[node] = (pn_id, name)
                 pn_nodes.append((pn_id, ":instance", name))
