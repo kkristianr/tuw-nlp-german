@@ -2,6 +2,7 @@ import re
 
 import networkx as nx
 from networkx.readwrite import json_graph
+from networkx.utils import graphs_equal
 
 from tuw_nlp.graph.utils import graph_to_bolinas, graph_to_pn, pn_to_graph
 
@@ -29,6 +30,21 @@ class Graph:
         self.G.graph["text"] = self.text
         self.G.graph["type"] = self.type
 
+    def __eq__(self, other):
+        return (
+            self.text == other.text
+            and self.tokens == other.tokens
+            and graphs_equal(self.G, other.G)
+        )
+
+    def __hash__(self):
+        return int(
+            nx.weisfeiler_lehman_graph_hash(
+                self.G, node_attr="asciiname", edge_attr="color"
+            ),
+            16,
+        )
+
     def __dict__(self):
         return self.to_json()
 
@@ -36,9 +52,15 @@ class Graph:
         s = json_graph.adjacency_data(self.G)
         return s
 
-    def to_bolinas(self, name_attr="name", return_root=False, ext_node=None, keep_node_labels=True):
+    def to_bolinas(
+        self, name_attr="name", return_root=False, ext_node=None, keep_node_labels=True
+    ):
         return graph_to_bolinas(
-            self.G, name_attr=name_attr, return_root=return_root, ext_node=ext_node, keep_node_labels=keep_node_labels
+            self.G,
+            name_attr=name_attr,
+            return_root=return_root,
+            ext_node=ext_node,
+            keep_node_labels=keep_node_labels,
         )
 
     def to_penman(self, name_attr="name"):
@@ -53,8 +75,8 @@ class Graph:
         return Graph(G, text, tokens, type)
 
     @staticmethod
-    def from_penman(pn_graph):
-        G, _ = pn_to_graph(pn_graph)
+    def from_penman(pn_graph, node_attr="name"):
+        G, _ = pn_to_graph(pn_graph, node_attr=node_attr)
 
         return Graph(G)
 
@@ -85,7 +107,7 @@ class Graph:
         if re.match("^[0-9]", s) or s in keywords:
             s = "X" + s
         return s
-    
+
     @staticmethod
     def nx_graph_to_dot(G, marked_nodes=set(), edge_color=None):
         show_graph = G.copy()
@@ -182,5 +204,21 @@ class Graph:
         self.G = g_pn
 
     def to_dot(self, marked_nodes=set(), edge_color=None):
-        return Graph.nx_graph_to_dot(self.G, marked_nodes=marked_nodes, edge_color=edge_color)
-    
+        return Graph.nx_graph_to_dot(
+            self.G, marked_nodes=marked_nodes, edge_color=edge_color
+        )
+
+    @property
+    def lextop(self):
+        return list(
+            nx.lexicographical_topological_sort(
+                self.G, key=lambda n: self.G.nodes[n]["name"]
+            )
+        )
+
+    def index_nodes(self, nodes):
+        return [self.lextop.index(node) for node in nodes]
+
+    def nodes_by_lextop(self, indices):
+        lextop = self.lextop
+        return [lextop[i] for i in indices]
