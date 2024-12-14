@@ -8,14 +8,14 @@ from tuw_nlp.text.utils import load_parsed, save_parsed
 
 
 class CustomStanzaPipeline:
-    def __init__(self, lang="de", processors=None, package="default"):
+    def __init__(self, lang="de", processors=None, package="default", use_gpu=False):
         if processors is None:
             processors = {}
         self.lang = lang
 
         if self.lang == "de":
             self.tokenizer = stanza.Pipeline(
-                lang="de", processors="tokenize,fix_ssplit"
+                lang="de", processors="tokenize,fix_ssplit", use_gpu=use_gpu
             )
         else:
             self.tokenizer = stanza.Pipeline(
