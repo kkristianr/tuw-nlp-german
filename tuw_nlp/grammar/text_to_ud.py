@@ -8,7 +8,7 @@ class TextToUD:
     def __init__(self, lang, nlp_cache, cache_dir=None, pretokenized=False):
         if lang == "de":
             nlp = CustomStanzaPipeline(
-                processors="tokenize,mwt,pos,lemma,depparse", pretokenized=pretokenized
+                processors="tokenize,mwt,pos,lemma,depparse"
             )
         elif lang == "en":
             nlp = CustomStanzaPipeline(
