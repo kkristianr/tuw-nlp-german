@@ -8,24 +8,18 @@ from tuw_nlp.text.utils import load_parsed, save_parsed
 
 
 class CustomStanzaPipeline:
-    def __init__(
-        self, lang="de", processors=None, package="default", use_gpu=False
-    ):
+    def __init__(self, lang="de", processors=None, package="default", use_gpu=False):
         if processors is None:
             processors = {}
         self.lang = lang
 
         if self.lang == "de":
             self.tokenizer = stanza.Pipeline(
-                lang="de",
-                processors="tokenize,fix_ssplit",
-                use_gpu=use_gpu
-                                        )
+                lang="de", processors="tokenize,fix_ssplit", use_gpu=use_gpu
+            )
         else:
             self.tokenizer = stanza.Pipeline(
-                lang=self.lang,
-                processors="tokenize",
-                package=package
+                lang=self.lang, processors="tokenize", package=package
             )
 
         self.additional = stanza.Pipeline(
@@ -33,21 +27,17 @@ class CustomStanzaPipeline:
             processors=processors,
             tokenize_no_ssplit=True,
             package=package,
-            use_gpu=use_gpu)
+        )
 
     def ssplit(self, text):
         return [sen.text for sen in self.tokenizer(text).sentences]
 
     def process(self, text):
-        if self.pretokenized:
-            return self.additional(text)
-        else:
-            sens = self.ssplit(text)
-            return self.additional("\n\n".join(sens))
+        sens = self.ssplit(text)
+        return self.additional("\n\n".join(sens))
 
     def __call__(self, text):
         return self.process(text)
-
 
 class CachedStanzaPipeline:
     def __init__(self, stanza_pipeline, cache_path, init=None):
