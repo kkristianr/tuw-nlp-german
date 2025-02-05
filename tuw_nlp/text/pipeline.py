@@ -9,7 +9,7 @@ from tuw_nlp.text.utils import load_parsed, save_parsed
 
 class CustomStanzaPipeline:
     def __init__(
-        self, lang="de", processors=None, package="default", pretokenized=False
+        self, lang="de", processors=None, package="default", use_gpu=False, pretokenized=False
     ):
         self.pretokenized = pretokenized
         if processors is None:
@@ -20,6 +20,7 @@ class CustomStanzaPipeline:
             self.tokenizer = stanza.Pipeline(
                 lang="de",
                 processors="tokenize,fix_ssplit",
+                use_gpu=use_gpu,
                 tokenize_pretokenized=pretokenized,
             )
         else:
