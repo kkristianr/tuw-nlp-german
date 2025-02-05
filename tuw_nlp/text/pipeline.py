@@ -9,9 +9,8 @@ from tuw_nlp.text.utils import load_parsed, save_parsed
 
 class CustomStanzaPipeline:
     def __init__(
-        self, lang="de", processors=None, package="default", use_gpu=False, pretokenized=False
+        self, lang="de", processors=None, package="default", use_gpu=False
     ):
-        self.pretokenized = pretokenized
         if processors is None:
             processors = {}
         self.lang = lang
@@ -20,9 +19,8 @@ class CustomStanzaPipeline:
             self.tokenizer = stanza.Pipeline(
                 lang="de",
                 processors="tokenize,fix_ssplit",
-                use_gpu=use_gpu,
-                tokenize_pretokenized=pretokenized,
-            )
+                use_gpu=use_gpu
+                                        )
         else:
             self.tokenizer = stanza.Pipeline(
                 lang=self.lang,
@@ -35,8 +33,7 @@ class CustomStanzaPipeline:
             processors=processors,
             tokenize_no_ssplit=True,
             package=package,
-            tokenize_pretokenized=pretokenized
-        )
+            use_gpu=use_gpu)
 
     def ssplit(self, text):
         return [sen.text for sen in self.tokenizer(text).sentences]
