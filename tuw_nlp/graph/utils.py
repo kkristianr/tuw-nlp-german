@@ -6,6 +6,7 @@ from itertools import chain, product
 import networkx as nx
 import penman as pn
 from networkx.algorithms.isomorphism import DiGraphMatcher
+import json
 
 from tuw_nlp import logger
 from tuw_nlp.text.patterns.misc import (
@@ -18,6 +19,13 @@ from tuw_nlp.text.utils import replace_emojis
 
 dummy_isi_graph = "(dummy_0 / dummy_0)"
 dummy_tree = "dummy(dummy)"
+
+try:
+    with open("synonyms.json", "r", encoding="utf-8") as f:
+        SYNONYMS = json.load(f)
+except FileNotFoundError:
+    logging.warning("synonyms.json file not found. No synonyms will be used.")
+    SYNONYMS = {}
 
 
 class GraphFormulaPatternMatcher:
@@ -56,19 +64,36 @@ class GraphFormulaPatternMatcher:
         return GraphFormulaPatternMatcher.node_matcher(n1, n2, 0)
 
     @staticmethod
-    def node_matcher(n1, n2, flags):
-        logger.debug(f"matchig these: {n1}, {n2}")
-        if n1["name"] is None or n2["name"] is None:
+    def node_matcher(n1, n2, flags=0, attrs=None):
+        logger.debug(f"matchig these nodes: {n1}, {n2}, {attrs=}")
+        attrs = ("name",) if attrs is None else attrs
+        for attr in attrs:
+            if not GraphFormulaPatternMatcher._node_matcher(n1, n2, flags, attr):
+                return False
+        return True
+
+    @staticmethod
+    def _node_matcher(n1, n2, flags, attr):
+        if n1[attr] is None or n2[attr] is None:
             return True
 
-        return (
-            True
-            if (
-                re.match(rf"\b({n2['name']})\b", n1["name"], flags)
-                or n2["name"] == n1["name"]
-            )
-            else False
-        )
+        if n2[attr] == n1[attr] or re.match(rf"\b({n2[attr]})\b", n1[attr], flags):
+            return True
+
+        # Check if n1[attr] has synonyms and if n2[attr] is one of them.
+        synonyms_for_n1 = SYNONYMS.get(n1[attr], [])
+        if n2[attr] in synonyms_for_n1:
+            logging.debug(f"Matched via synonyms: '{n2[attr]}' is a synonym of '{n1[attr]}'")
+            return True
+
+        # Also check the reverse: if n2[attr] has synonyms and n1[attr] is one of them.
+        synonyms_for_n2 = SYNONYMS.get(n2[attr], [])
+        if n1[attr] in synonyms_for_n2:
+            logging.debug(f"Matched via synonyms: '{n1[attr]}' is a synonym of '{n2[attr]}'")
+            return True
+
+        return False
+
 
     @staticmethod
     def edge_matcher_case_insensitive(n1, n2):

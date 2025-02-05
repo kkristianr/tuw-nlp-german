@@ -1,0 +1,14 @@
+{
+    "Kauf": [
+        "Einkauf",
+        "Erwerb"
+    ],
+    "Sache": [
+        "Objekt",
+        "Gegenstand"
+    ],
+    "Fahrrad": [
+        "Bici",
+        "Velo"
+    ]
+}
