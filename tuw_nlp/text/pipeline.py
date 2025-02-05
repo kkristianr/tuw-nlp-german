@@ -15,7 +15,8 @@ class CustomStanzaPipeline:
 
         if self.lang == "de":
             self.tokenizer = stanza.Pipeline(
-                lang="de", processors="tokenize,fix_ssplit", pretokenized=pretokenized
+                lang="de", processors="tokenize,fix_ssplit", pretokenized=pretokenized, use_gpu=False
+                
             )
         else:
             self.tokenizer = stanza.Pipeline(
